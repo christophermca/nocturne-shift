@@ -78,6 +78,6 @@ options:
 ```
 
 
-[![Publish to PyPI](https://github.com/christophermca/nocturne-shift/actions/workflows/publish-pypi.yml/badge.svg)](https://github.com/christophermca/nocturne-shift/actions/workflows/publish-pypi.yml)
+[![Publish to PyPI](https://github.com/christophermca/nocturne-shift/actions/workflows/publish-pypi.yml/badge.svg?branch=dev)](https://github.com/christophermca/nocturne-shift/actions/workflows/publish-pypi.yml)
 
 [![Publish to TestPyPI](https://github.com/christophermca/nocturne-shift/actions/workflows/publish-testpypi.yml/badge.svg?branch=dev&event=workflow_dispatch)](https://github.com/christophermca/nocturne-shift/actions/workflows/publish-testpypi.yml)
