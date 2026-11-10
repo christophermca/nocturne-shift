@@ -33,6 +33,7 @@ class TypedStore(TypedDict):
     timestamp: str
     times: tuple[str, str]
     tzid: str
+    utc_offset: str
     use_geoclue: bool
 
 
