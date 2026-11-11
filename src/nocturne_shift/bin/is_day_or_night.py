@@ -3,7 +3,7 @@
 import sys
 
 from .settings import Settings
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def is_day_or_night(
@@ -33,7 +33,9 @@ def is_day_or_night(
     if not times:
         return
     [sunrise, sunset] = times
-    current_time = datetime.now().strftime("%H:%M")  # 24hr format
+    current_time = (
+        datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+    )
 
     # check if currrent time is after sunrise or sunset
     DAY_NIGHT: str
