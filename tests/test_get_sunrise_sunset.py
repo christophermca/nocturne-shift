@@ -36,7 +36,9 @@ def fake_process(output=""):
 
 @pytest.fixture
 def popen():
-    with patch("nocturne_shift.bin.get_sunrise_sunset.subprocess.Popen") as popen:
+    with patch(
+        "nocturne_shift.bin.get_sunrise_sunset.subprocess.Popen"
+    ) as popen:
         yield popen
 
 
@@ -73,9 +75,12 @@ def _mock_response(payload):
     return response
 
 
+SUNRISE_TIME = "2026-09-25T06:52:10-04:00"
+SUNSET_TIME = "2026-09-25T18:51:30-04:00"
+
 API_PAYLOAD = {
-    "sunrise": "2026-09-25T06:52:10-04:00",
-    "sunset": "2026-09-25T18:51:30-04:00",
+    "sunrise": SUNRISE_TIME,
+    "sunset": SUNSET_TIME,
     "tzid": "America/New_York",
 }
 
@@ -106,7 +111,7 @@ class TestGetSunriseSunset:
         )
 
         assert object.use_geoclue == True
-        assert object.times == ("06:52", "18:51")
+        assert object.times == (SUNRISE_TIME, SUNSET_TIME)
 
     def test_when_geoclue_is_False_and_settings_is_None(
         self, requests, mock_get_location
@@ -215,25 +220,25 @@ class TestSettingsIsSet:
 
         # fetched the times and saved them back to settings
         assert fake_settings.data_store["times"] == GLib.Variant(
-            "(ss)", ("06:52", "18:51")
+            "(ss)", (SUNRISE_TIME, SUNSET_TIME)
         )
         assert fake_settings.data_store["tzid"] == "America/New_York"
 
 
 # The request URL carries the coordinates; error output must not, since
 # under systemd it goes to the journal.
-URL_WITH_COORDS = "https://api.sunrise-sunset.org/v2?lat=40.712776&lng=-74.005974"
+URL_WITH_COORDS = (
+    "https://api.sunrise-sunset.org/v2?lat=40.712776&lng=-74.005974"
+)
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
 def test_http_errors_report_the_status_not_the_url(mock_get, fetcher, capsys):
     # what raise_for_status() raises: the message names the URL, and
     # .response is attached
-    mock_get.return_value.raise_for_status.side_effect = (
-        requests.exceptions.HTTPError(
-            f"500 Server Error: Internal Server Error for url: {URL_WITH_COORDS}",
-            response=Mock(status_code=500),
-        )
+    mock_get.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError(
+        f"500 Server Error: Internal Server Error for url: {URL_WITH_COORDS}",
+        response=Mock(status_code=500),
     )
 
     assert fetcher._get_sunrise_sunset(40.712776, -74.005974, 0) is None
@@ -243,13 +248,18 @@ def test_http_errors_report_the_status_not_the_url(mock_get, fetcher, capsys):
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
-def test_http_error_without_a_response_is_still_reported(mock_get, fetcher, capsys):
+def test_http_error_without_a_response_is_still_reported(
+    mock_get, fetcher, capsys
+):
     mock_get.return_value.raise_for_status.side_effect = (
         requests.exceptions.HTTPError("500 Server Error")
     )
 
     assert fetcher._get_sunrise_sunset(40.7, -74.0, 0) is None
-    assert "HTTP error occurred (e.g., 404, 500): no response" in capsys.readouterr().out
+    assert (
+        "HTTP error occurred (e.g., 404, 500): no response"
+        in capsys.readouterr().out
+    )
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
@@ -283,7 +293,9 @@ def test_coordinates_are_rounded_before_the_request(mock_get, fetcher):
     fetcher._get_sunrise_sunset(40.712776, -74.005974, 0)
 
     call = mock_get.call_args
-    params = call.kwargs.get("params", call.args[1] if len(call.args) > 1 else None)
+    params = call.kwargs.get(
+        "params", call.args[1] if len(call.args) > 1 else None
+    )
     assert params == {"lat": 40.71, "lng": -74.01}
 
 
@@ -291,7 +303,9 @@ def test_save_without_settings_says_why(capsys):
     fetcher = GetTimeOfSunriseSunset()  # no settings
     capsys.readouterr()  # drop __init__'s "no static location" message
 
-    fetcher._save({"tzid": "America/New_York", "times": ("06:52", "18:51")})
+    fetcher._save(
+        {"tzid": "America/New_York", "times": (SUNRISE_TIME, SUNSET_TIME)}
+    )
 
     assert capsys.readouterr().err == (
         "nocturne-shift: unable to save tzid, times: settings unavailable\n"
@@ -305,4 +319,6 @@ def test_save_errors_go_to_stderr(fetcher, capsys):
 
     captured = capsys.readouterr()
     assert "ERROR SAVING: can't save tzid" in captured.err
-    assert captured.out == ""  # stdout stays clean for `nocturne-shift ... | cmd`
+    assert (
+        captured.out == ""
+    )  # stdout stays clean for `nocturne-shift ... | cmd`

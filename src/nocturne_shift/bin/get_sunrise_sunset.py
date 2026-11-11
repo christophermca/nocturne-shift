@@ -172,7 +172,6 @@ class GetTimeOfSunriseSunset:
                 print(f"[nocturne-shift] {json_string}")
 
             tzid = response_data["tzid"]
-            utc_offset = response_data["utc_offset"]
             sunrise = response_data["sunrise"]
             sunset = response_data["sunset"]
 
@@ -185,7 +184,7 @@ class GetTimeOfSunriseSunset:
                 "timestamp": f"{datetime.now().astimezone().isoformat()}",
                 "tzid": tzid,
                 "times": times_tuple,
-                "utc-offset": utc_offset,
+                "utc-offset": datetime.fromisoformat(sunrise).strftime("%Z"),
             }
 
             self._save(saved)
