@@ -30,10 +30,6 @@
       <summary>timezone id</summary>
       <default>""</default>
     </key>
-    <key name="utc-offset" type="s">
-      <summary>utc offset</summary>
-      <default>""</default>
-    </key>
     <key name="timestamp" type="s">
       <description>timestamp of last run</description>
       <default>""</default>

@@ -184,7 +184,6 @@ class GetTimeOfSunriseSunset:
                 "timestamp": f"{datetime.now().astimezone().isoformat()}",
                 "tzid": tzid,
                 "times": times_tuple,
-                "utc-offset": datetime.fromisoformat(sunrise).strftime("%z"),
             }
 
             self._save(saved)

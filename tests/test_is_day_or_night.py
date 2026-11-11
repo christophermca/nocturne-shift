@@ -115,7 +115,7 @@ def test_when_time_and_settings_are_None():
 
 def test_times_from_an_earlier_day_still_work():
     """The times are saved by the last fetch, which may have been yesterday."""
-    with at("12:00", day="2026-09-26"):
+    with at("12:00", date="2026-09-26"):
         assert is_day_or_night(TIMES, None) == "day"
 
 
@@ -128,7 +128,11 @@ def test_times_in_another_time_zone_are_converted_to_local():
         assert is_day_or_night(times_in_utc, None) == "night"
 
 
-def test_old_hhmm_times_still_work():
-    """Values saved by versions before the ISO change are plain "HH:MM"."""
+def test_times_that_are_not_iso_are_skipped(capsys):
+    """The schema default before the first fetch is ("sunrise", "sunset")."""
+    help_message = "run nocturne-shift -w"
+    settings = create_autospec(Settings, instance=True)
     with at("12:00"):
-        assert is_day_or_night(("07:00", "20:00"), None) == "day"
+        assert is_day_or_night(("sunrise", "sunset"), settings) is None
+    settings.set.assert_not_called()
+    assert help_message in capsys.readouterr().err

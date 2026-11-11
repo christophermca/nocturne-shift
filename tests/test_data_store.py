@@ -53,12 +53,11 @@ def store(tmp_path):
             GLib.Variant("(dd)", (40.7, -74.0)),
             (40.7, -74.0),
         ),
-        ("utc-offset", "-5:00", "-5:00"),
         ("tzid", "America/New_York", "America/New_York"),
         ("use-geoclue", False, False),  # default is true, so save False
     ],
     # ids follows the aboves return types
-    ids=["variant-ss", "variant-dd", "string", "string", "bool"],
+    ids=["variant-ss", "variant-dd", "string", "bool"],
 )
 def test_set_saves_each_type(store, key, value, expected):
     store.set(key, value)

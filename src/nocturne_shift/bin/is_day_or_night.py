@@ -32,10 +32,21 @@ def is_day_or_night(
 
     if not times:
         return
-    [sunrise, sunset] = times
-    current_time = (
-        datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
-    )
+    # Compare times of day in this computer's time zone: the saved ISO times
+    # are in the location's time zone, and can be from an earlier day.
+    try:
+        sunrise, sunset = (
+            datetime.fromisoformat(t).astimezone().time() for t in times
+        )
+    except ValueError:
+        # the schema default ("sunrise", "sunset"), or "HH:MM" saved before this change
+        print(
+            f"nocturne-shift: no usable sunrise/sunset saved ({times}); run nocturne-shift -w",
+            file=sys.stderr,
+        )
+        return None
+
+    current_time = datetime.now().time()
 
     # check if currrent time is after sunrise or sunset
     DAY_NIGHT: str
