@@ -13,8 +13,8 @@ def is_day_or_night(
 ):
     """Work out "day" or "night" and save it.
 
-    `times` is a (sunrise, sunset) pair of "HH:MM" strings. When it's not
-    given, the times saved in settings are used.
+    `times` is a (sunrise, sunset) pair of ISO formatted (8601) date-time strings.
+    When it's not given, the times saved in settings are used.
 
     `settings` is a `Settings`. When it's not given, raise an Error to the caller;
     """

@@ -56,7 +56,7 @@ def store(tmp_path):
         ("tzid", "America/New_York", "America/New_York"),
         ("use-geoclue", False, False),  # default is true, so save False
     ],
-    # ids follows the aboves return types
+    # `ids` name the type of each value above
     ids=["variant-ss", "variant-dd", "string", "bool"],
 )
 def test_set_saves_each_type(store, key, value, expected):
