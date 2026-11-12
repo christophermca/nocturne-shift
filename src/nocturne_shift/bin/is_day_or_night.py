@@ -3,7 +3,7 @@
 import sys
 
 from .settings import Settings
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 def is_day_or_night(
