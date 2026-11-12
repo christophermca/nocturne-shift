@@ -136,3 +136,27 @@ def test_times_that_are_not_iso_are_skipped(capsys):
         assert is_day_or_night(("sunrise", "sunset"), settings) is None
     settings.set.assert_not_called()
     assert help_message in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "now, expected",
+    [
+        ("12:00", "night"),
+        ("14:00", "day"),
+        ("23:00", "day"),
+        ("01:00", "day"),
+        ("02:00", "night"),
+    ],
+)
+def test_day_that_spans_midnight_in_local_time(now, expected):
+    """Los Angeles times on a computer whose clock is set to UTC.
+
+    06:52-18:51 Los Angeles (UTC-7) is 13:52-01:51 UTC, so the day wraps
+    past midnight in the computer's time zone.
+    """
+    times = (f"{DATE}T06:52:00-07:00", f"{DATE}T18:51:00-07:00")
+    with patch.dict("os.environ", {"TZ": "UTC"}):
+        time.tzset()
+        with freeze_time(f"{DATE}T{now}:00+00:00"):
+            assert is_day_or_night(times, None) == expected
+    time.tzset()

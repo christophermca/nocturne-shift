@@ -48,16 +48,20 @@ def is_day_or_night(
 
     current_time = datetime.now().time()
 
-    # check if currrent time is after sunrise or sunset
+    # Checks if currrent time is after sunrise or sunset
     DAY_NIGHT: str
 
     if verbose >= 1:
         print(sunrise, current_time, sunset)
 
-    if sunrise <= current_time < sunset:
-        DAY_NIGHT = "day"
+    if sunrise <= sunset:
+        is_day = sunrise <= current_time < sunset
     else:
-        DAY_NIGHT = "night"
+        # In this computer's time zone the location's day spans midnight
+        # (e.g. Los Angeles on a UTC clock: sunrise 13:52, sunset 01:51)
+        is_day = current_time >= sunrise or current_time < sunset
+
+    DAY_NIGHT = "day" if is_day else "night"
 
     # set day-or-night
     try:
