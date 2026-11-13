@@ -16,6 +16,8 @@ from nocturne_shift.bin.settings import Settings
 SCHEMA_XML = next(
     (Path(nocturne_shift.__file__).parent / "schemas").glob("*.gschema.xml")
 )
+SUNRISE_TIME = "2026-09-25T06:52:10-04:00"
+SUNSET_TIME = "2026-09-25T18:51:30-04:00"
 
 
 @pytest.fixture
@@ -43,8 +45,8 @@ def store(tmp_path):
     [
         (
             "times",
-            GLib.Variant("(ss)", ("06:52", "18:51")),
-            ("06:52", "18:51"),
+            GLib.Variant("(ss)", (SUNRISE_TIME, SUNSET_TIME)),
+            (SUNRISE_TIME, SUNSET_TIME),
         ),
         (
             "last-known-coordinates",
@@ -54,6 +56,7 @@ def store(tmp_path):
         ("tzid", "America/New_York", "America/New_York"),
         ("use-geoclue", False, False),  # default is true, so save False
     ],
+    # `ids` name the type of each value above
     ids=["variant-ss", "variant-dd", "string", "bool"],
 )
 def test_set_saves_each_type(store, key, value, expected):
@@ -70,7 +73,7 @@ def test_get_keys_lists_every_key_in_the_schema(store):
 
 def test_set_rejects_unsupported_types(store):
     with pytest.raises(TypeError, match="can't save times: unsupported type"):
-        store.set("times", ["06:52", "18:51"])
+        store.set("times", [SUNRISE_TIME, SUNSET_TIME])
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
@@ -78,8 +81,8 @@ def test_fetched_times_are_saved_through_settings(mock_get, store, capsys):
     """The -w path end to end: fetch -> _save -> Settings -> DataStore."""
     response = MagicMock()
     response.json.return_value = {
-        "sunrise": "2026-09-25T06:52:10-04:00",
-        "sunset": "2026-09-25T18:51:30-04:00",
+        "sunrise": SUNRISE_TIME,
+        "sunset": SUNSET_TIME,
         "tzid": "America/New_York",
     }
     mock_get.return_value = response
@@ -88,7 +91,7 @@ def test_fetched_times_are_saved_through_settings(mock_get, store, capsys):
     fetcher._get_sunrise_sunset(40.7, -74.0, False)
 
     assert "ERROR SAVING" not in capsys.readouterr().err
-    assert store.data["times"] == ("06:52", "18:51")
+    assert store.data["times"] == (SUNRISE_TIME, SUNSET_TIME)
     assert store.data["tzid"] == "America/New_York"
 
 

@@ -172,12 +172,8 @@ class GetTimeOfSunriseSunset:
                 print(f"[nocturne-shift] {json_string}")
 
             tzid = response_data["tzid"]
-            sunrise = datetime.fromisoformat(
-                response_data["sunrise"]
-            ).strftime("%H:%M")
-            sunset = datetime.fromisoformat(response_data["sunset"]).strftime(
-                "%H:%M"
-            )
+            sunrise = response_data["sunrise"]
+            sunset = response_data["sunset"]
 
             times = (sunrise, sunset)
 

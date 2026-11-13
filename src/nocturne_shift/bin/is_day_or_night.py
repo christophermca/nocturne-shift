@@ -13,8 +13,8 @@ def is_day_or_night(
 ):
     """Work out "day" or "night" and save it.
 
-    `times` is a (sunrise, sunset) pair of "HH:MM" strings. When it's not
-    given, the times saved in settings are used.
+    `times` is a (sunrise, sunset) pair of ISO formatted (8601) date-time strings.
+    When it's not given, the times saved in settings are used.
 
     `settings` is a `Settings`. When it's not given, raise an Error to the caller;
     """
@@ -32,19 +32,36 @@ def is_day_or_night(
 
     if not times:
         return
-    [sunrise, sunset] = times
-    current_time = datetime.now().strftime("%H:%M")  # 24hr format
+    # Compare times of day in this computer's time zone: the saved ISO times
+    # are in the location's time zone, and can be from an earlier day.
+    try:
+        sunrise, sunset = (
+            datetime.fromisoformat(t).astimezone().time() for t in times
+        )
+    except ValueError:
+        # the schema default ("sunrise", "sunset"), or "HH:MM" saved before this change
+        print(
+            f"nocturne-shift: no usable sunrise/sunset saved ({times}); run nocturne-shift -w",
+            file=sys.stderr,
+        )
+        return None
 
-    # check if currrent time is after sunrise or sunset
+    current_time = datetime.now().time()
+
+    # Checks if currrent time is after sunrise or sunset
     DAY_NIGHT: str
 
     if verbose >= 1:
         print(sunrise, current_time, sunset)
 
-    if sunrise <= current_time < sunset:
-        DAY_NIGHT = "day"
+    if sunrise <= sunset:
+        is_day = sunrise <= current_time < sunset
     else:
-        DAY_NIGHT = "night"
+        # In this computer's time zone the location's day spans midnight
+        # (e.g. Los Angeles on a UTC clock: sunrise 13:52, sunset 01:51)
+        is_day = current_time >= sunrise or current_time < sunset
+
+    DAY_NIGHT = "day" if is_day else "night"
 
     # set day-or-night
     try:
