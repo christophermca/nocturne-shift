@@ -118,7 +118,10 @@ class GetTimeOfSunriseSunset:
                         found_coords["lng"] = float(matched_string)
 
                     # attempt to exit early
-                    if found_coords["lat"] and found_coords["lng"]:
+                    if (
+                        found_coords["lat"] is not None
+                        and found_coords["lng"] is not None
+                    ):
                         break
 
             finally:
@@ -160,7 +163,7 @@ class GetTimeOfSunriseSunset:
 
         except subprocess.TimeoutExpired as e:
             print(
-                f"TimeoutExpired: {e.timeout} seconds\n\n {e.stdout}",
+                f"nocturne-shift: geoclue gave no location within {e.timeout} seconds",
                 file=sys.stderr,
             )
             return None
