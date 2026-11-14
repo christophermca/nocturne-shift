@@ -1,5 +1,4 @@
 import sys
-import subprocess
 from pathlib import Path
 from gi.repository import Gio, GLib
 from typing import TypedDict, get_type_hints
