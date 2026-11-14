@@ -1,3 +1,5 @@
+import sys
+import time
 import io
 import pytest
 from unittest.mock import Mock, patch, MagicMock, create_autospec
@@ -191,6 +193,35 @@ class TestGetSunriseSunsetGetLocation:
             AGENT_CMD,
             WHERE_AM_I_CMD,
         ]
+
+    def test_where_am_i_that_never_answers_times_out(
+        self, fetcher, popen, capsys
+    ):
+        # a real child process that prints nothing, like geoclue stuck
+        # waiting for a location
+        silent = REAL_POPEN(
+            [sys.executable, "-c", "import time; time.sleep(60)"],
+            text=True,
+            stdout=subprocess.PIPE,
+        )
+        popen.side_effect = [fake_process(), silent]
+
+        with patch(
+            "nocturne_shift.bin.get_sunrise_sunset.GEOCLUE_TIMEOUT", 0.5
+        ):
+            started = time.monotonic()
+            assert fetcher._get_location() is None
+            assert time.monotonic() - started < 5  # not the full 60 s
+
+        assert silent.poll() is not None  # killed and reaped
+        assert "no location within 0.5 seconds" in capsys.readouterr().err
+
+    def test_where_am_i_that_answers_is_not_timed_out(self, fetcher, popen):
+        coords, _, where_am_i = self._run(fetcher, popen)
+
+        assert coords == (40.7128, -74.006)
+        where_am_i.kill.assert_called()  # stopped once it has answered
+        where_am_i.wait.assert_called()
 
 
 @patch(

@@ -9,6 +9,7 @@ import argparse
 import subprocess
 import requests
 
+from zoneinfo import ZoneInfo
 from collections import namedtuple
 from typing import Any
 from .settings import Settings
@@ -20,6 +21,7 @@ from gi.repository import GLib
 NOAA = "https://api.sunrise-sunset.org/v2"
 ACCURACY_LEVEL_CITY = 4
 TIME_THRESHOLD = 3
+GEOCLUE_TIMEOUT = 30
 
 
 class GetTimeOfSunriseSunset:
@@ -91,25 +93,45 @@ class GetTimeOfSunriseSunset:
                 "lng": None,
             }
 
-            for line in iter(geoclue_data.stdout.readline, ""):
-                found_lat = re.match(lat_regex, line)
-                found_lng = re.match(lng_regex, line)
+            # Kill where-am-i if it hasn't reported in time: that closes its
+            # stdout, so the readline() loop below ends instead of waiting.
+            timed_out = threading.Event()
 
-                if found_lat:
-                    matched_string = found_lat.group().split()[1]
-                    found_coords["lat"] = float(matched_string)
+            def give_up():
+                timed_out.set()
+                geoclue_data.kill()
 
-                if found_lng:
-                    matched_string = found_lng.group().split()[1]
-                    found_coords["lng"] = float(matched_string)
+            timer = threading.Timer(GEOCLUE_TIMEOUT, give_up)
+            timer.start()
+            try:
+                for line in iter(geoclue_data.stdout.readline, ""):
+                    found_lat = re.match(lat_regex, line)
+                    found_lng = re.match(lng_regex, line)
 
-                # attempt to exit early
-                if found_coords["lat"] and found_coords["lng"]:
-                    break
+                    if found_lat:
+                        matched_string = found_lat.group().split()[1]
+                        found_coords["lat"] = float(matched_string)
 
-            geoclue_data.terminate()
+                    if found_lng:
+                        matched_string = found_lng.group().split()[1]
+                        found_coords["lng"] = float(matched_string)
+
+                    # attempt to exit early
+                    if found_coords["lat"] and found_coords["lng"]:
+                        break
+
+            finally:
+                timer.cancel()
+                geoclue_data.kill()
+                geoclue_data.wait()  # reap it, so no zombie is left
+
+            if timed_out.is_set() and None in found_coords.values():
+                raise subprocess.TimeoutExpired(
+                    geoclue_data.args, GEOCLUE_TIMEOUT
+                )
+
             # raise exception if unable to determine coords
-            if found_coords["lat"] is None and found_coords["lng"] is None:
+            if found_coords["lat"] is None or found_coords["lng"] is None:
                 raise TypeError(
                     "Could not determine location. Please check your geoclue configuration"
                 )
@@ -136,7 +158,10 @@ class GetTimeOfSunriseSunset:
             return coords
 
         except subprocess.TimeoutExpired as e:
-            print(f"TimeoutExpired: {e.timeout} seconds\n\n {e.stdout}")
+            print(
+                f"TimeoutExpired: {e.timeout} seconds\n\n {e.stdout}",
+                file=sys.stderr,
+            )
             return None
 
         except subprocess.CalledProcessError as e:
@@ -171,16 +196,23 @@ class GetTimeOfSunriseSunset:
                 )
                 print(f"[nocturne-shift] {json_string}")
 
+            # Check what the API sent before saving it: ZoneInfo raises for
+            # an unknown or malformed zone name, fromisoformat for anything
+            # that isn't a date-time. isoformat() saves a normalised copy.
             tzid = response_data["tzid"]
-            sunrise = response_data["sunrise"]
-            sunset = response_data["sunset"]
+            ZoneInfo(tzid)
+
+            sunrise = datetime.fromisoformat(
+                response_data["sunrise"]
+            ).isoformat()
+            sunset = datetime.fromisoformat(
+                response_data["sunset"]
+            ).isoformat()
 
             times = (sunrise, sunset)
-
-            saved: dict[str, Any] = {}
-
             times_tuple = GLib.Variant("(ss)", times)
-            saved = {
+
+            saved: dict[str, Any] = {
                 "timestamp": f"{datetime.now().astimezone().isoformat()}",
                 "tzid": tzid,
                 "times": times_tuple,
