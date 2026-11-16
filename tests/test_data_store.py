@@ -105,8 +105,73 @@ def test_schema_id_picks_which_schema_to_load(tmp_path):
     assert store.schema.get_id() == package_id
 
 
-def test_folder_without_schema_xml_says_why(tmp_path, capsys):
+def test_folder_without_schemas_says_why(tmp_path, capsys):
     store = DataStore(str(tmp_path))
 
     assert store.available is False
-    assert f"no .gschema.xml in {tmp_path}" in capsys.readouterr().err
+    assert f"no compiled schemas in {tmp_path}" in capsys.readouterr().err
+
+
+# DataStore finds the schema by ID, not by which .gschema.xml comes first, so a
+# folder that also holds other apps' schemas can't be mistaken for it.
+EXTENSION_XML = """<schemalist>
+  <schema id="org.gnome.shell.extensions.night-shift"
+          path="/org/gnome/shell/extensions/night-shift/">
+    <key name="timestamp" type="s"><default>""</default></key>
+  </schema>
+</schemalist>"""
+
+# Sorts before both Night Shift schemas, so "the first file" would pick it
+OTHER_APP_XML = """<schemalist>
+  <schema id="com.example.aaa" path="/com/example/aaa/">
+    <key name="timestamp" type="s"><default>""</default></key>
+  </schema>
+</schemalist>"""
+
+
+def compiled_folder(folder, **schemas):
+    """Write {file stem: XML} into `folder` and compile them."""
+    if shutil.which("glib-compile-schemas") is None:
+        pytest.skip("glib-compile-schemas is not installed")
+    folder.mkdir(parents=True, exist_ok=True)
+    for stem, xml in schemas.items():
+        (folder / f"{stem}.gschema.xml").write_text(xml)
+    subprocess.run(["glib-compile-schemas", str(folder)], check=True)
+    return str(folder)
+
+
+def test_a_shared_folder_uses_the_night_shift_schema(tmp_path):
+    folder = compiled_folder(
+        tmp_path / "shared",
+        **{"com.example.aaa": OTHER_APP_XML},
+        **{"org.gnome.shell.extensions.night-shift": EXTENSION_XML},
+    )
+
+    store = DataStore(folder)
+
+    assert store.schema.get_id() == "org.gnome.shell.extensions.night-shift"
+
+
+def test_a_folder_with_only_another_apps_schema_is_unavailable(
+    tmp_path, capsys
+):
+    folder = compiled_folder(
+        tmp_path / "other", **{"com.example.aaa": OTHER_APP_XML}
+    )
+
+    store = DataStore(folder)
+
+    assert store.available is False
+    assert f"no Night Shift schema in {folder}" in capsys.readouterr().err
+
+
+def test_the_extension_schema_is_preferred_over_nocturne_shifts_own(tmp_path):
+    folder = compiled_folder(
+        tmp_path / "both",
+        **{"com.github.christophermca.night-shift": SCHEMA_XML.read_text()},
+        **{"org.gnome.shell.extensions.night-shift": EXTENSION_XML},
+    )
+
+    store = DataStore(folder)
+
+    assert store.schema.get_id() == "org.gnome.shell.extensions.night-shift"

@@ -3,13 +3,15 @@ from pathlib import Path
 from gi.repository import Gio
 from ..data_store import DataStore
 
+EXTENSION_UUID = "night-shift@christophermca.github.io"
+
 DEFAULT_SCHEMA_PATH = os.path.expanduser(
     Path.home()
     / ".local"
     / "share"
     / "gnome-shell"
     / "extensions"
-    / "night-shift@christophermca.github.io"
+    / EXTENSION_UUID
     / "schemas"
 )
 

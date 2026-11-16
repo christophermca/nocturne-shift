@@ -1,27 +1,39 @@
 import sys
-from pathlib import Path
 from gi.repository import Gio, GLib
 from typing import TypedDict, get_type_hints
 
 default_config_file = ".var/night-shift/data.json"
 
 
-def _compile_schema(schema_path, schema_id) -> Gio.SettingsSchema | None:
+# The schemas nocturne-shift stores its data in, in order of preference:
+# the Night Shift GNOME extension's, then nocturne-shift's own (for use
+# without the extension). Looked up by ID, never by which file comes first,
+# so a folder holding other apps' schemas too can't be mistaken for one.
+SCHEMA_IDS = (
+    "org.gnome.shell.extensions.night-shift",
+    "com.github.christophermca.night-shift",
+)
+
+
+def _find_schema(schema_path, schema_ids=SCHEMA_IDS) -> Gio.SettingsSchema:
+    """The first of `schema_ids` compiled in `schema_path`, else installed
+    system-wide (e.g. /usr/share/glib-2.0/schemas). Raises LookupError."""
     try:
-        schema_source = Gio.SettingsSchemaSource.new_from_directory(
-            schema_path, Gio.SettingsSchemaSource.get_default(), False
+        source = Gio.SettingsSchemaSource.new_from_directory(
+            str(schema_path), Gio.SettingsSchemaSource.get_default(), False
         )
-        schema = schema_source.lookup(schema_id, True)
-        if schema is None:
-            raise LookupError(f"schema {schema_id} not found")
-
-        return schema
-
-    except Exception as e:
-        print(
-            f"nocturne-shift: settings unavailable, nothing will be saved ({e})",
-            file=sys.stderr,
+    except GLib.Error as e:
+        raise LookupError(
+            f"no compiled schemas in {schema_path} ({e.message})"
         )
+
+    # The folder itself first (recursive=False), then system-wide schemas
+    for recursive in (False, True):
+        for schema_id in schema_ids:
+            schema = source.lookup(schema_id, recursive)
+            if schema is not None:
+                return schema
+    raise LookupError(f"no Night Shift schema in {schema_path}")
 
 
 class TypedStore(TypedDict):
@@ -44,20 +56,8 @@ class DataStore:
         self.schema: Gio.SettingsSchema | None = None
 
         try:
-            schema_xml = next(
-                Path(self.schema_path).glob("*.gschema.xml"), None
-            )
-            if schema_xml is None:
-                raise LookupError(f"no .gschema.xml in {self.schema_path}")
-            package_id = schema_xml.name.removesuffix(".gschema.xml")
-            self.schema = _compile_schema(
-                self.schema_path, schema_id=package_id
-            )
-
-            if self.schema is not None:
-                self.data = Gio.Settings.new_full(self.schema, None, None)
-            else:
-                self.data = None
+            self.schema = _find_schema(self.schema_path)
+            self.data = Gio.Settings.new_full(self.schema, None, None)
 
         except Exception as e:
             print(
