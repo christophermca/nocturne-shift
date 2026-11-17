@@ -100,6 +100,17 @@ class DataStore:
             raise AttributeError("`data` is None")
             return None
 
+        # Writing a key the schema doesn't have aborts the whole process
+        # (GLib-GIO-ERROR), so skip it: an older extension's schema may not
+        # have a key a newer nocturne-shift saves, like "backend-version".
+        if self.schema is not None and not self.schema.has_key(key):
+            print(
+                f"nocturne-shift: not saving {key}: the schema in"
+                f" {self.schema_path} has no such key",
+                file=sys.stderr,
+            )
+            return
+
         match value:
             case bool():  # bool must go before int: bool is a subclass of int
                 self.data.set_boolean(key, value)

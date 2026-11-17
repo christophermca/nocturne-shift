@@ -175,3 +175,46 @@ def test_the_extension_schema_is_preferred_over_nocturne_shifts_own(tmp_path):
     store = DataStore(folder)
 
     assert store.schema.get_id() == "org.gnome.shell.extensions.night-shift"
+
+
+def test_a_key_missing_from_the_schema_is_skipped(tmp_path, capsys):
+    """An older extension's schema lacks keys a newer nocturne-shift saves.
+    Writing one would abort the process (GLib-GIO-ERROR), so it's skipped."""
+    if shutil.which("glib-compile-schemas") is None:
+        pytest.skip("glib-compile-schemas is not installed")
+    xml = SCHEMA_XML.read_text()
+    old = re.sub(
+        r'\s*<key name="backend-version".*?</key>', "", xml, flags=re.S
+    )
+    assert old != xml  # the package schema has the key; this copy doesn't
+    (tmp_path / SCHEMA_XML.name).write_text(old)
+    subprocess.run(["glib-compile-schemas", str(tmp_path)], check=True)
+    store = DataStore(str(tmp_path))
+    store.data = Gio.Settings.new_full(
+        store.schema, Gio.memory_settings_backend_new(), None
+    )
+
+    store.set("backend-version", "0.7.6")
+    store.set("tzid", "America/New_York")  # other keys still save
+
+    assert "not saving backend-version" in capsys.readouterr().err
+    assert store.data["tzid"] == "America/New_York"
+
+
+@patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
+def test_a_fetch_saves_the_installed_version(mock_get, store):
+    response = MagicMock()
+    response.json.return_value = {
+        "sunrise": SUNRISE_TIME,
+        "sunset": SUNSET_TIME,
+        "tzid": "America/New_York",
+    }
+    mock_get.return_value = response
+    fetcher = GetTimeOfSunriseSunset(settings=Settings(store))
+
+    with patch(
+        "nocturne_shift.bin.get_sunrise_sunset.version", return_value="0.7.6"
+    ):
+        fetcher._get_sunrise_sunset(40.7, -74.0, False)
+
+    assert store.data["backend-version"] == "0.7.6"
