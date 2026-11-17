@@ -17,7 +17,7 @@ REAL_POPEN = subprocess.Popen
 AGENT_CMD = ["/usr/lib/geoclue-2.0/demos/agent"]
 WHERE_AM_I_CMD = [
     "/usr/lib/geoclue-2.0/demos/where-am-i",
-    "--accuracy-level=4",  # city level: enough for sunrise/sunset times
+    f"--accuracy-level={AccuracyLevel.STREET.value}",  # street level
     "--time-threshold=3",
 ]
 
