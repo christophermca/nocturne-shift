@@ -20,7 +20,7 @@ gi.require_version("Gio", "2.0")
 from gi.repository import GLib
 
 NOAA = "https://api.sunrise-sunset.org/v2"
-ACCURACY_LEVEL_CITY = 4
+ACCURACY_LEVEL = {country: 1, city: 4, neighborhood: 5, street: 6, exact: 8}
 TIME_THRESHOLD = 3
 GEOCLUE_TIMEOUT = 30
 
@@ -77,7 +77,7 @@ class GetTimeOfSunriseSunset:
                 [
                     "/usr/lib/geoclue-2.0/demos/where-am-i",
                     # Popen takes strings only: an int raises TypeError
-                    f"--accuracy-level={ACCURACY_LEVEL_CITY}",
+                    f"--accuracy-level={ACCURACY_LEVEL[street]}",
                     f"--time-threshold={TIME_THRESHOLD}",
                 ],  # `run /usr/lib/geoclue-2.0/demo/where-am-i -h` for more information about options
                 text=True,
