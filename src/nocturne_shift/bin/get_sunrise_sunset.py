@@ -217,7 +217,9 @@ class GetTimeOfSunriseSunset:
             times_tuple = GLib.Variant("(ss)", times)
 
             saved: dict[str, Any] = {
-                "timestamp": f"{datetime.now().astimezone().isoformat()}",
+                "timestamp": datetime.now()
+                .astimezone()
+                .isoformat(timespec="seconds"),
                 "tzid": tzid,
                 "times": times_tuple,
             }

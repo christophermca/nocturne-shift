@@ -1,6 +1,7 @@
 import sys
 import time
 import io
+import re
 import pytest
 from unittest.mock import Mock, patch, MagicMock, create_autospec
 import subprocess
@@ -353,3 +354,17 @@ def test_save_errors_go_to_stderr(fetcher, capsys):
     assert (
         captured.out == ""
     )  # stdout stays clean for `nocturne-shift ... | cmd`
+
+
+@patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
+def test_saved_timestamp_is_whole_seconds_with_an_offset(mock_get, fetcher):
+    """The GNOME extension reads `timestamp` with JavaScript's Date.parse(),
+    which is only specified for this form: no microseconds."""
+    mock_get.return_value = _mock_response(API_PAYLOAD)
+
+    fetcher._get_sunrise_sunset(40.7, -74.0, 0)
+
+    timestamp = fetcher.settings.data_store["timestamp"]
+    assert re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}", timestamp
+    ), timestamp
