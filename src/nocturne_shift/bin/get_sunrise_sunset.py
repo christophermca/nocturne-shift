@@ -16,6 +16,7 @@ from typing import Any
 from .settings import Settings
 from datetime import datetime
 from enum import IntEnum
+from importlib.metadata import PackageNotFoundError, version
 
 gi.require_version("Gio", "2.0")
 from gi.repository import GLib
@@ -33,6 +34,14 @@ class AccuracyLevel(IntEnum):
     NEIGHBORHOOD = 5
     STREET = 6
     EXACT = 8
+
+
+def _installed_version() -> str:
+    """This package's version, like "0.7.6"; "" when it isn't installed."""
+    try:
+        return version("nocturne-shift")
+    except PackageNotFoundError:
+        return ""
 
 
 class GetTimeOfSunriseSunset:
@@ -230,6 +239,9 @@ class GetTimeOfSunriseSunset:
                 "timestamp": datetime.now()
                 .astimezone()
                 .isoformat(timespec="seconds"),
+                # The extension compares this with the oldest version it
+                # works with, and tells the user to upgrade if it's older.
+                "backend-version": _installed_version(),
                 "tzid": tzid,
                 "times": times_tuple,
             }

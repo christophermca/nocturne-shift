@@ -31,7 +31,11 @@
       <default>""</default>
     </key>
     <key name="timestamp" type="s">
-      <description>timestamp of last run</description>
+      <summary>timestamp of last run</summary>
+      <default>""</default>
+    </key>
+    <key name="backend-version" type="s">
+      <summary>nocturne-shift version that last fetched the times</summary>
       <default>""</default>
     </key>
   </schema>
