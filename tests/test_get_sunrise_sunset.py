@@ -8,7 +8,10 @@ import subprocess
 import requests
 from gi.repository import Gio, GLib
 from nocturne_shift.bin.settings import Settings
-from nocturne_shift.bin.get_sunrise_sunset import GetTimeOfSunriseSunset
+from nocturne_shift.bin.get_sunrise_sunset import (
+    GetTimeOfSunriseSunset,
+    AccuracyLevel,
+)
 
 REAL_POPEN = subprocess.Popen
 AGENT_CMD = ["/usr/lib/geoclue-2.0/demos/agent"]
@@ -368,3 +371,15 @@ def test_saved_timestamp_is_whole_seconds_with_an_offset(mock_get, fetcher):
     assert re.fullmatch(
         r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}", timestamp
     ), timestamp
+
+
+def test_accuracy_levels_match_geoclue_and_cannot_change():
+    assert [(level.name, level.value) for level in AccuracyLevel] == [
+        ("COUNTRY", 1),
+        ("CITY", 4),
+        ("NEIGHBORHOOD", 5),
+        ("STREET", 6),
+        ("EXACT", 8),
+    ]
+    with pytest.raises(AttributeError):
+        AccuracyLevel.CITY = 5

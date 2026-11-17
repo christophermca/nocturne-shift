@@ -15,14 +15,24 @@ from collections import namedtuple
 from typing import Any
 from .settings import Settings
 from datetime import datetime
+from enum import IntEnum
 
 gi.require_version("Gio", "2.0")
 from gi.repository import GLib
 
 NOAA = "https://api.sunrise-sunset.org/v2"
-ACCURACY_LEVEL = {country: 1, city: 4, neighborhood: 5, street: 6, exact: 8}
 TIME_THRESHOLD = 3
 GEOCLUE_TIMEOUT = 30
+
+
+class AccuracyLevel(IntEnum):
+    """Geoclue's accuracy levels (GClueAccuracyLevel), for where-am-i."""
+
+    COUNTRY = 1
+    CITY = 4
+    NEIGHBORHOOD = 5
+    STREET = 6
+    EXACT = 8
 
 
 class GetTimeOfSunriseSunset:
@@ -77,7 +87,7 @@ class GetTimeOfSunriseSunset:
                 [
                     "/usr/lib/geoclue-2.0/demos/where-am-i",
                     # Popen takes strings only: an int raises TypeError
-                    f"--accuracy-level={ACCURACY_LEVEL[street]}",
+                    f"--accuracy-level={AccuracyLevel.STREET.value}",
                     f"--time-threshold={TIME_THRESHOLD}",
                 ],  # `run /usr/lib/geoclue-2.0/demo/where-am-i -h` for more information about options
                 text=True,
