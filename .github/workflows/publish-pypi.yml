@@ -3,7 +3,7 @@ name: Publish to PyPI
 permissions:
   contents: read
 # Run by hand: Actions tab -> "Publish to PyPI" -> Run workflow, on a commit
-# tagged cli-vX.Y.Z (nocturne-shift)
+# tagged vX.Y.Z (nocturne-shift)
 # Uploads to PyPI are permanent, so:
 #   - only release versions are uploaded (no .devN / a / b / rc builds), and
 #   - the publish jobs use the `pypi` environment; give it required reviewers
@@ -94,7 +94,7 @@ jobs:
       - name: Refuse dev / pre-release builds
         run: |
           if ls dist/core/*.whl | grep -E "\.dev[0-9]+|a[0-9]+-|b[0-9]+-|rc[0-9]+-"; then
-            echo "::error::Not a release build. Tag the commit (cli-vX.Y.Z) and run from it."
+            echo "::error::Not a release build. Tag the commit (vX.Y.Z) and run from it."
             exit 1
           fi
           echo "Release versions only:" && ls dist/core/*.whl
