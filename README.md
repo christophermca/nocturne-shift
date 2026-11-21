@@ -5,7 +5,6 @@ Nocturne Shift will lookup the time of the sunrise and sunset for the provided l
 - `nocturne-shift` can also check if the current state of the 24hr period is day or night
 - `nocturne-shift services`: systemd timers (with `gnome-night-shift`)
 
-
 ## Features
 
 * Use geoclue to determine location. Requires Location services to be enabled. **(Settings > Privacy & Security > Location > Enable "Automatic Device Location"**
