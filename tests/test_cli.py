@@ -83,7 +83,7 @@ def test_non_numeric_coordinate_is_a_usage_error(argv, mock_fetcher, capsys):
 
 
 # --- -c / --check-now [SCHEMA_PATH] -------------------------------------------
-def test_given_check_now_fails_throws_error(argv, settings_class, capsys):
+def test_given_check_now_fails_throws_error(argv, settings_class, caplog):
     argv("--check-now")
     with patch(
         "nocturne_shift.cli.is_day_or_night",
@@ -93,6 +93,7 @@ def test_given_check_now_fails_throws_error(argv, settings_class, capsys):
         result = cli.main()
 
         assert result is None
+        assert "check() failed" in caplog.text
 
 
 def test_check_now_uses_default_settings(argv, mock_check, settings_class):
@@ -225,15 +226,17 @@ def test_run_once_without_check_now_does_not_check(mock_fetcher, mock_check):
     mock_check.assert_not_called()
 
 
-def test_run_once_catches_fetch_errors(mock_fetcher, capsys):
+def test_run_once_catches_fetch_errors(mock_fetcher, caplog):
     mock_fetcher.side_effect = RuntimeError("offline")
 
     cli.run_once()
 
-    assert "ERROR during run_once(): offline" in capsys.readouterr().out
+    (record,) = caplog.records
+    assert record.getMessage() == "run_once() failed"
+    assert "RuntimeError: offline" in caplog.text
 
 
-def test_run_once_catches_check_errors(mock_fetcher, capsys):
+def test_run_once_catches_check_errors(mock_fetcher, caplog):
     mock_fetcher.return_value.times = ("06:52", "18:51")
 
     with patch(
@@ -243,7 +246,9 @@ def test_run_once_catches_check_errors(mock_fetcher, capsys):
 
     check.assert_called_once()
 
-    assert "check failed: no schema" in capsys.readouterr().out
+    (record,) = caplog.records
+    assert record.getMessage() == "check() failed"
+    assert "AttributeError: no schema" in caplog.text
 
 
 # --- -v / --verbose and -w / --watch ---------------------------------------------

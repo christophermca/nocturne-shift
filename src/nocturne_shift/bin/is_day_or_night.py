@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
-import sys
-
 from .settings import Settings
 from datetime import datetime
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def is_day_or_night(
@@ -40,9 +41,8 @@ def is_day_or_night(
         )
     except ValueError:
         # the schema default ("sunrise", "sunset"), or "HH:MM" saved before this change
-        print(
-            f"nocturne-shift: no usable sunrise/sunset saved ({times}); run nocturne-shift -w",
-            file=sys.stderr,
+        log.warning(
+            "no usable sunrise/sunset saved (%s): run nocturne-shift -w", times
         )
         return None
 
@@ -66,11 +66,8 @@ def is_day_or_night(
     # set day-or-night
     try:
         settings.set("day-or-night", DAY_NIGHT)
-    except Exception as e:
-        print(
-            "nocturne-shift: unable to save day-or-night: settings unavailable",
-            file=sys.stderr,
-        )
+    except Exception:
+        log.exception("saving day-or-night failed")
 
     print(f"{DAY_NIGHT}")
     return DAY_NIGHT

@@ -10,7 +10,8 @@ from nocturne_shift import cli
 @pytest.fixture
 def plugins(monkeypatch):
     """Control which plugins load_commands() sees, whatever this machine has
-    installed (e.g. `pip install -e ./gnome-night-shift` registers the real one)."""
+    installed (e.g. `pip install -e ./gnome-night-shift` registers the real one).
+    """
     installed = []
 
     def entry_points(group):
@@ -59,17 +60,19 @@ def test_missing_plugin_says_how_to_install(argv, plugins):
     with pytest.raises(SystemExit) as exit_info:
         cli.main()
 
-    assert "pip install 'gnome-night-shift'" in str(
-        exit_info.value.code
-    )
+    assert "pip install 'gnome-night-shift'" in str(exit_info.value.code)
 
 
-def test_broken_plugin_does_not_break_the_core_cli(argv, plugins, capsys):
+def test_broken_plugin_does_not_break_the_core_cli(
+    argv, plugins, capsys, caplog
+):
     plugins("services", "no_such_module:register")
     argv()  # no arguments: prints help
 
     cli.main()
 
-    captured = capsys.readouterr()
-    assert "usage: nocturne-shift" in captured.out
-    assert "skipping plugin 'services'" in captured.err
+    captured = caplog.text
+    assert (
+        "usage: nocturne-shift" in capsys.readouterr().out
+    )  # Prints the help message
+    assert "skipping plugin 'services'" in caplog.text  # logs the problem

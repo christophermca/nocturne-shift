@@ -105,11 +105,11 @@ def test_schema_id_picks_which_schema_to_load(tmp_path):
     assert store.schema.get_id() == package_id
 
 
-def test_folder_without_schemas_says_why(tmp_path, capsys):
+def test_folder_without_schemas_says_why(tmp_path, caplog):
     store = DataStore(str(tmp_path))
 
     assert store.available is False
-    assert f"no compiled schemas in {tmp_path}" in capsys.readouterr().err
+    assert f"no compiled schemas in {tmp_path}" in caplog.text
 
 
 # DataStore finds the schema by ID, not by which .gschema.xml comes first, so a
@@ -153,7 +153,7 @@ def test_a_shared_folder_uses_the_night_shift_schema(tmp_path):
 
 
 def test_a_folder_with_only_another_apps_schema_is_unavailable(
-    tmp_path, capsys
+    tmp_path, caplog
 ):
     folder = compiled_folder(
         tmp_path / "other", **{"com.example.aaa": OTHER_APP_XML}
@@ -162,7 +162,7 @@ def test_a_folder_with_only_another_apps_schema_is_unavailable(
     store = DataStore(folder)
 
     assert store.available is False
-    assert f"no Night Shift schema in {folder}" in capsys.readouterr().err
+    assert f"no Night Shift schema in {folder}" in caplog.text
 
 
 def test_the_extension_schema_is_preferred_over_nocturne_shifts_own(tmp_path):
@@ -177,7 +177,7 @@ def test_the_extension_schema_is_preferred_over_nocturne_shifts_own(tmp_path):
     assert store.schema.get_id() == "org.gnome.shell.extensions.night-shift"
 
 
-def test_a_key_missing_from_the_schema_is_skipped(tmp_path, capsys):
+def test_a_key_missing_from_the_schema_is_skipped(tmp_path, caplog):
     """An older extension's schema lacks keys a newer nocturne-shift saves.
     Writing one would abort the process (GLib-GIO-ERROR), so it's skipped."""
     if shutil.which("glib-compile-schemas") is None:
@@ -197,7 +197,7 @@ def test_a_key_missing_from_the_schema_is_skipped(tmp_path, capsys):
     store.set("backend-version", "0.7.6")
     store.set("tzid", "America/New_York")  # other keys still save
 
-    assert "not saving backend-version" in capsys.readouterr().err
+    assert "not saving backend-version" in caplog.text
     assert store.data["tzid"] == "America/New_York"
 
 
