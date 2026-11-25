@@ -178,7 +178,7 @@ class GetTimeOfSunriseSunset:
 
         except subprocess.TimeoutExpired as e:
             log.warning(
-                "Geoclue gave no location within %s seconds", e.timeout
+                "geoclue gave no location within %s seconds", e.timeout
             )
             return None
 
@@ -283,7 +283,7 @@ class GetTimeOfSunriseSunset:
 
         if self.settings is None:
             log.error(
-                "no static location: self.settings unavailable",
+                "no static location: settings unavailable",
             )
             return None
 

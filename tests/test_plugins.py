@@ -1,8 +1,8 @@
-import importlib.metadata
 import sys
 import types
-
 import pytest
+import importlib.metadata
+
 
 from nocturne_shift import cli
 
@@ -71,7 +71,6 @@ def test_broken_plugin_does_not_break_the_core_cli(
 
     cli.main()
 
-    captured = caplog.text
     assert (
         "usage: nocturne-shift" in capsys.readouterr().out
     )  # Prints the help message

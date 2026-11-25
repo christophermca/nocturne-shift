@@ -1,5 +1,5 @@
-import sys
 import time
+import sys
 import io
 import re
 import pytest
