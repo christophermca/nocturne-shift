@@ -1,7 +1,8 @@
-import sys
-from gi.repository import Gio, GLib
+import logging
+from gi.repository import Gio, GLib, GObject
 from typing import TypedDict, get_type_hints
 
+log = logging.getLogger(__name__)
 default_config_file = ".var/night-shift/data.json"
 
 
@@ -60,10 +61,7 @@ class DataStore:
             self.data = Gio.Settings.new_full(self.schema, None, None)
 
         except Exception as e:
-            print(
-                f"nocturne-shift: settings unavailable, nothing will be saved ({e})",
-                file=sys.stderr,
-            )
+            log.error("settings unavailable, nothing will be saved (%s)", e)
             self.data = None
 
     def get_keys(self) -> list[str]:
@@ -104,10 +102,10 @@ class DataStore:
         # (GLib-GIO-ERROR), so skip it: an older extension's schema may not
         # have a key a newer nocturne-shift saves, like "backend-version".
         if self.schema is not None and not self.schema.has_key(key):
-            print(
-                f"nocturne-shift: not saving {key}: the schema in"
-                f" {self.schema_path} has no such key",
-                file=sys.stderr,
+            log.warning(
+                "not saving %s: the schema in %s has no such key",
+                key,
+                self.schema_path,
             )
             return
 

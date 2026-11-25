@@ -63,10 +63,10 @@ def test_available_reflects_the_data_store(store, available):
     assert Settings(store).available is available
 
 
-def test_missing_schema_means_unavailable(tmp_path, capsys):
+def test_missing_schema_means_unavailable(tmp_path, caplog):
     # Real DataStore and real Gio: an empty directory has no compiled schema,
     # which is exactly a machine without the GNOME extension installed.
     settings = Settings(DataStore(str(tmp_path)))
 
     assert settings.available is False
-    assert "settings unavailable" in capsys.readouterr().err
+    assert "settings unavailable" in caplog.text

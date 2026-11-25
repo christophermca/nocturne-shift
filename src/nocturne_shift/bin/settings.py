@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
-from gi.repository import Gio
 from ..data_store import DataStore
+import logging
 
 EXTENSION_UUID = "night-shift@christophermca.github.io"
 
@@ -14,6 +14,8 @@ DEFAULT_SCHEMA_PATH = os.path.expanduser(
     / EXTENSION_UUID
     / "schemas"
 )
+
+log = logging.getLogger(__name__)
 
 
 class Settings:
@@ -48,8 +50,8 @@ class Settings:
         try:
             return self.data_store.get(key)
 
-        except AttributeError as e:
-            print(f"Error: Failed to GET key:`{key}`")
+        except AttributeError:
+            log.exception("reading %s failed", key)
 
     def set(self, key, value):
         self.data_store.set(key, value)
