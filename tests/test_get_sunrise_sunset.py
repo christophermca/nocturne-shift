@@ -1,5 +1,5 @@
-import sys
 import time
+import sys
 import io
 import re
 import pytest
@@ -199,7 +199,7 @@ class TestGetSunriseSunsetGetLocation:
         ]
 
     def test_where_am_i_that_never_answers_times_out(
-        self, fetcher, popen, capsys
+        self, fetcher, popen, caplog
     ):
         # a real child process that prints nothing, like geoclue stuck
         # waiting for a location
@@ -218,7 +218,7 @@ class TestGetSunriseSunsetGetLocation:
             assert time.monotonic() - started < 5  # not the full 60 s
 
         assert silent.poll() is not None  # killed and reaped
-        assert "no location within 0.5 seconds" in capsys.readouterr().err
+        assert "no location within 0.5 seconds" in caplog.text
 
     def test_where_am_i_that_answers_is_not_timed_out(self, fetcher, popen):
         coords, _, where_am_i = self._run(fetcher, popen)
@@ -268,7 +268,7 @@ URL_WITH_COORDS = (
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
-def test_http_errors_report_the_status_not_the_url(mock_get, fetcher, capsys):
+def test_http_errors_report_the_status_not_the_url(mock_get, fetcher, caplog):
     # what raise_for_status() raises: the message names the URL, and
     # .response is attached
     mock_get.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError(
@@ -277,36 +277,41 @@ def test_http_errors_report_the_status_not_the_url(mock_get, fetcher, capsys):
     )
 
     assert fetcher._get_sunrise_sunset(40.712776, -74.005974, 0) is None
-    out = capsys.readouterr().out
-    assert "HTTP error occurred (e.g., 404, 500): 500" in out
-    assert "40.712776" not in out and "74.005974" not in out
+
+    (record,) = caplog.records
+    assert (
+        record.getMessage() == "fetching sunrise/sunset times failed: HTTP 500"
+    )
+    assert record.exc_info is None  # a traceback would include the URL
+    assert "40.712776" not in caplog.text and "74.005974" not in caplog.text
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
 def test_http_error_without_a_response_is_still_reported(
-    mock_get, fetcher, capsys
+    mock_get, fetcher, caplog
 ):
     mock_get.return_value.raise_for_status.side_effect = (
         requests.exceptions.HTTPError("500 Server Error")
     )
 
     assert fetcher._get_sunrise_sunset(40.7, -74.0, 0) is None
-    assert (
-        "HTTP error occurred (e.g., 404, 500): no response"
-        in capsys.readouterr().out
-    )
+    assert "HTTP no response" in caplog.text
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
-def test_other_errors_print_only_their_type(mock_get, fetcher, capsys):
+def test_other_errors_log_only_their_type(mock_get, fetcher, caplog):
     # e.g. no network: requests' message includes the URL with lat/lng
     mock_get.side_effect = requests.exceptions.ConnectionError(
         f"Max retries exceeded with url: {URL_WITH_COORDS}"
     )
 
     assert fetcher._get_sunrise_sunset(40.712776, -74.005974, 0) is None
-    out = capsys.readouterr().out
-    assert out.strip() == "ConnectionError"
+    (record,) = caplog.records
+    assert record.getMessage() == (
+        "fetching sunrise/sunset times failed: ConnectionError"
+    )
+    assert record.exc_info is None
+    assert "40.712776" not in caplog.text and "74.005974" not in caplog.text
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
@@ -334,29 +339,41 @@ def test_coordinates_are_rounded_before_the_request(mock_get, fetcher):
     assert params == {"lat": 40.71, "lng": -74.01}
 
 
-def test_save_without_settings_says_why(capsys):
+@patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")
+def test_unexpected_errors_keep_their_traceback(mock_get, fetcher, caplog):
+    # not a network problem: a bug in nocturne-shift, so the traceback helps
+    mock_get.side_effect = ValueError("bug")
+
+    assert fetcher._get_sunrise_sunset(40.7, -74.0, 0) is None
+    (record,) = caplog.records
+    assert record.exc_info is not None
+    assert "ValueError: bug" in caplog.text
+
+
+def test_save_without_settings_says_why(caplog):
     fetcher = GetTimeOfSunriseSunset()  # no settings
-    capsys.readouterr()  # drop __init__'s "no static location" message
+    caplog.clear()  # drop anything __init__ logged
 
     fetcher._save(
         {"tzid": "America/New_York", "times": (SUNRISE_TIME, SUNSET_TIME)}
     )
 
-    assert capsys.readouterr().err == (
-        "nocturne-shift: unable to save tzid, times: settings unavailable\n"
+    (record,) = caplog.records
+    assert record.getMessage() == (
+        "unable to save tzid, times: settings unavailable"
     )
+    assert record.exc_info is None  # not inside an except: no traceback
 
 
-def test_save_errors_go_to_stderr(fetcher, capsys):
+def test_save_errors_are_logged_with_their_traceback(fetcher, caplog, capsys):
     fetcher.settings.set.side_effect = TypeError("can't save tzid")
 
     fetcher._save({"tzid": "America/New_York"})
 
-    captured = capsys.readouterr()
-    assert "ERROR SAVING: can't save tzid" in captured.err
-    assert (
-        captured.out == ""
-    )  # stdout stays clean for `nocturne-shift ... | cmd`
+    (record,) = caplog.records
+    assert record.getMessage() == "saving tzid failed"
+    assert "TypeError: can't save tzid" in caplog.text
+    assert capsys.readouterr().out == ""  # stdout stays clean for `| cmd`
 
 
 @patch("nocturne_shift.bin.get_sunrise_sunset.requests.get")

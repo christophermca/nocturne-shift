@@ -5,6 +5,7 @@ from .bin.is_day_or_night import is_day_or_night
 from .bin.settings import Settings
 from .data_store import DataStore
 
+import logging
 import sys
 import argparse
 import argcomplete
@@ -12,6 +13,7 @@ import importlib.metadata
 
 PLUGIN_GROUP = "night_shift.commands"
 OPTIONAL_COMMANDS = {"services": "gnome-night-shift"}
+log = logging.getLogger(__name__)
 
 try:
     __version__ = importlib.metadata.version("nocturne-shift")
@@ -34,10 +36,7 @@ def load_commands(subparsers) -> dict:
         except (
             Exception
         ) as e:  # a broken plugin must not take the core CLI down
-            print(
-                f"nocturne-shift: skipping plugin {entry_point.name!r} ({e})",
-                file=sys.stderr,
-            )
+            log.warning("skipping plugin %r (%s)", entry_point.name, e)
 
     # Commands whose plugin isn't installed still parse, and say how to get them
     for name, extra in OPTIONAL_COMMANDS.items():
@@ -62,8 +61,8 @@ def _not_installed(name, extra):
 def check(times=None, settings=None, verbose=0):
     try:
         is_day_or_night(times, settings, verbose)
-    except AttributeError as e:
-        print(f"ERROR: {e}")
+    except AttributeError:
+        log.exception("check() failed")
 
 
 def run_once(
@@ -80,13 +79,17 @@ def run_once(
         if check_now != False:
             try:
                 check(sunrise_sunset.times, settings, verbose)
-            except Exception as e:
-                print(f"check failed: {e}")
-    except Exception as e:
-        print(f"ERROR during run_once(): {e} ")
+            except Exception:
+                log.exception("check() failed")
+    except Exception:
+        log.exception("run_once() failed")
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="nocturne-shift: %(levelname)s: %(message)s",
+    )
     parser = argparse.ArgumentParser(
         description="Get the times for the sunrise/sunset",
         prog="nocturne-shift",

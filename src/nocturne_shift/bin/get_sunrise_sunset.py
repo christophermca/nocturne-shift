@@ -2,13 +2,12 @@
 
 import re
 import gi
-import sys
 import pprint
 import json
-import argparse
 import subprocess
 import requests
 import threading
+import logging
 
 from zoneinfo import ZoneInfo
 from collections import namedtuple
@@ -24,6 +23,7 @@ from gi.repository import GLib
 NOAA = "https://api.sunrise-sunset.org/v2"
 TIME_THRESHOLD = 3
 GEOCLUE_TIMEOUT = 30
+log = logging.getLogger(__name__)
 
 
 class AccuracyLevel(IntEnum):
@@ -166,10 +166,6 @@ class GetTimeOfSunriseSunset:
                 previous_coordinates = self.settings.get(
                     "last-known-coordinates"
                 )
-                try:
-                    previous_coordinates
-                except Exception as e:
-                    print(f"{e}")
 
             # CHECK if should save?
             if self.override or (list(coords) != previous_coordinates):
@@ -181,14 +177,15 @@ class GetTimeOfSunriseSunset:
             return coords
 
         except subprocess.TimeoutExpired as e:
-            print(
-                f"nocturne-shift: geoclue gave no location within {e.timeout} seconds",
-                file=sys.stderr,
+            log.warning(
+                "geoclue gave no location within %s seconds", e.timeout
             )
             return None
 
         except subprocess.CalledProcessError as e:
-            print(f"Error: {e.returncode} \n\n {e.stderr}")
+            log.error(
+                "where-am-i failed (exit %s): %s", e.returncode, e.stderr
+            )
             return None
 
         finally:
@@ -198,8 +195,8 @@ class GetTimeOfSunriseSunset:
                     self.agent.wait()  # Prevents zombie processes
                     self.agent = None
 
-            except Exception as e:
-                print(f"Error: ___{e}")
+            except Exception:
+                log.exception("stopping geoclue agent failed")
 
     def _get_sunrise_sunset(
         self, lat: float, lng: float, verbose: int
@@ -251,20 +248,23 @@ class GetTimeOfSunriseSunset:
             return times
 
         except requests.exceptions.HTTPError as http_err:
-            # Only the status: str(http_err) includes the URL, with lat/lng.
+            # Only the status: the exception's text includes the URL, with lat/lng.
             # getattr: an HTTPError raised without a response has .response None
             status = getattr(http_err.response, "status_code", "no response")
-            print(f"HTTP error occurred (e.g., 404, 500): {status}")
-        except (
-            Exception
-        ) as e:  # Generic Exception must go last becuase it will catch any exception
-            print(type(e).__name__)
+            log.error("fetching sunrise/sunset times failed: HTTP %s", status)
+        except requests.exceptions.RequestException as e:
+            # Connection errors, timeouts...: their text includes the URL too
+            log.error(
+                "fetching sunrise/sunset times failed: %s", type(e).__name__
+            )
+        except Exception:
+            # Anything else is a bug here: keep the traceback
+            log.exception("fetching sunrise/sunset times failed")
 
     def _save(self, data) -> None:
         if self.settings is None:
-            print(
-                f"nocturne-shift: unable to save {', '.join(data)}: settings unavailable",
-                file=sys.stderr,
+            log.error(
+                "unable to save %s: settings unavailable", ", ".join(data)
             )
             return
 
@@ -276,15 +276,14 @@ class GetTimeOfSunriseSunset:
             if self.verbose > 0:
                 pprint.pprint(data)
 
-        except Exception as e:
-            print(f"ERROR SAVING: {e}", file=sys.stderr)
+        except Exception:
+            log.exception("saving %s failed", ", ".join(data))
 
     def _get_static_location_from_settings(self) -> tuple[float, float]:
 
         if self.settings is None:
-            print(
-                "nocturne-shift: no static location: self.settings unavailable",
-                file=sys.stderr,
+            log.error(
+                "no static location: settings unavailable",
             )
             return None
 
@@ -300,4 +299,6 @@ class GetTimeOfSunriseSunset:
             return static_location
 
         else:
-            print("Missing required keys")
+            log.warning(
+                "no static location set: latitude or longitude is empty",
+            )

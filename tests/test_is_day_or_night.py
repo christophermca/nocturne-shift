@@ -128,14 +128,14 @@ def test_times_in_another_time_zone_are_converted_to_local():
         assert is_day_or_night(times_in_utc, None) == "night"
 
 
-def test_times_that_are_not_iso_are_skipped(capsys):
+def test_times_that_are_not_iso_are_skipped(caplog):
     """The schema default before the first fetch is ("sunrise", "sunset")."""
     help_message = "run nocturne-shift -w"
     settings = create_autospec(Settings, instance=True)
     with at("12:00"):
         assert is_day_or_night(("sunrise", "sunset"), settings) is None
     settings.set.assert_not_called()
-    assert help_message in capsys.readouterr().err
+    assert help_message in caplog.text
 
 
 @pytest.mark.parametrize(
