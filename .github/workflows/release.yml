@@ -9,11 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  run-test:
-    uses: ./.github/workflows/test.yml
 
   create-release:
-    needs: run-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
