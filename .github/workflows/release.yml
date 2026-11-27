@@ -1,10 +1,14 @@
-name: Create Github Release
+name: Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - 'v*'
+      - 'v\d+.\d+.\d+'
+  workflow_dispatch:
+  imputs:
+    tag:
+      description: "Existing release tag, eg v2.0.0"
+      required: true
 
 permissions:
   contents: read
@@ -15,9 +19,41 @@ jobs:
     permissions:
       contents: write
     env:
+      TAG: ${{ inputs.tag || github.ref_name }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      - name: Validate tag is on main
+        run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error:: $TAG is not on main. Merge into main, then tag the mergw commit."
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build the wheel and dist
+        run: |
+          make rebuild
+          ls dist
+
+      - name: Check the version matches the tag
+          run: |
+            expected="${TAG#v}"
+            for file in dist/*; do
+              case "$file" in
+                *-"$expected"-*.whl | *-"$expected".tar.gz) ;;
+                *) echo "::error::$file is not version $expected"; exit 1 ;;
+              esac
+            done
+
       - name: Create Draft Github Release
         run: |
           gh release create "$TAG" dist/* \
