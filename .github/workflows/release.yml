@@ -5,10 +5,10 @@ on:
     tags:
       - 'v\d+.\d+.\d+'
   workflow_dispatch:
-  imputs:
-    tag:
-      description: "Existing release tag, eg v2.0.0"
-      required: true
+    inputs:
+      tag:
+        description: "Existing release tag, eg v2.0.0"
+        required: true
 
 permissions:
   contents: read
