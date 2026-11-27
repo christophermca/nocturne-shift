@@ -45,7 +45,7 @@ jobs:
           ls dist
 
       - name: Check the version matches the tag
-          run: |
+        run: |
             expected="${TAG#v}"
             for file in dist/*; do
               case "$file" in
